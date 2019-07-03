@@ -1,0 +1,574 @@
+---
+title: "Seggration Metrics for U.S Cities"
+author: "Zoshua Colah"
+date: "10/25/2018"
+output:
+  html_document:
+    theme: flatly
+    highlight: kate
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#Loading Libraries
+library(devtools)
+library (dplyr)
+library (knitr)
+library(ggplot2)
+library (plotly)
+library(DT)
+library(ggpubr)
+library(forcats)
+library(reshape2)
+library(GGally)         
+
+# Sourcing analysis for the dataframes
+source('analysis.R')
+
+# Sourcing plot qual a ranking visual function from: https://beckmw.wordpress.com/2013/04/01/a-nifty-line-plot-to-visualize-multivariate-time-series/
+source('plot_qual.R')
+```
+
+#Introduction
+
+In 1988, Massey and Denton, used an extensive literature search and cluster analysis to identify 20 different indexes of segregation and classify them into five key dimensions of segregation. They were: 
+
+- **Evenness:**  the differential distribution of the subject population
+- **Exposure:** measures potential contact between different ethnicities of the population
+- **Concentration:** relative amount of physical space occupied by different ethnicities
+- **Centralization:** indicates the degree to which a group is located near the center of an urban area
+- **Clustering:** measures the degree to which minority group members live disproportionately in contiguous areas
+
+In this paper, I will investigate and discuss the **metrics belonging to the Exposure dimension** for 14 cities of the United States:
+***Baltimore, Charleston, Chicago, Columbus, Dayton, Denver, Kansas City, Memphis, Milwaukee, Oklahoma City, Pittsburgh, St.Louis, Syracuse and Wichita.***
+
+After diving into these metrics, I shall discuss: 
+- **the Gini Co-efficient**
+- **the Delta Index** 
+- **the Zo Index:** an alternate metric made by me which could be used for measuring segration known as the Zo-Index.
+
+**Please Note: All Data in Charts and Tables has been sorted from least segregated to most segregated**
+
+***Please Note: All definitions and formulas in this paper have been sourced from: [Measures OF Residential Segragation](https://www.census.gov/hhes/www/housing/resseg/pdf/app_b.pdf)***
+
+
+# What are Exposure Metrics?
+>Exposure measures the degree of potential contact, or possibility of interaction, between minority and majority group members. Exposure thus depends on the extent to which two groups share common residential areas, and hence, on the degree to which the average minority group member “experiences” segregation. As Massey and Denton point out in their investigation, indexes of evenness and exposure are correlated but measure different things: exposure measures depend on the relative sizes of the two groups being compared, while evenness measures do not. 
+
+###The measures of exposure are: 
+
+- **The Interaction and Isolation Indexes: The two indexes, respectively, reflect the probabilities that a minority person shares a unit area with a majority person or with another minority person.**The interaction index measures the exposure of minority group members to members of the majority group as the minority-weighted average of the majority proportion of the population in each areal unit. The isolation index measures “the extent to which minority members are exposed only to one another,” (Massey and Denton, p. 288) and is computed as the minority-weighted average of the minority proportion in each area. When there are only two groups, the isolation and interaction indexes sum to 1.0, so lower values of interaction and higher values of isolation each indicate higher segregation.However, when there are more than two groups, the interaction and isolation indexes will not sum to 1.0. 
+
+- **Correlation Ratio:**It is an adjustment of the isolation index to control for the asymmetry (when our data has more than one minority group). This is because when have more than one minority group. It is also known as eta-squared.
+
+The three different measures of exposure for the cities have been discussed below.
+
+## Interaction Index Metrics for each city
+
+
+
+###Formula for calculating Interaction Index of 1 city
+
+$$\ Interaction \quad Index = {{\sum\limits_{i=1}^{n}}{\left[{\left( \frac { { x }_{ i } }{ X } \right)}{\left(\frac { { y }_{ i } }{{ t }_{ i }} \right)}\right]}}$$
+
+$$\ Where $$
+$$\  { x }_{ i } \quad is \quad  the \quad minority \quad population \quad of \quad area \quad i \quad (one \quad tract) $$ 
+$$\  { X} \quad is \quad  the \quad total \quad minority \quad population \quad of \quad the \quad city $$ 
+
+$$\  { y }_{ i } \quad is \quad  the \quad majority \quad population \quad of \quad area \quad i \quad (one \quad tract) $$ 
+ $$\  { t }_{ i } \quad is \quad  the \quad total \quad population \quad of \quad area \quad i \quad (one \quad tract)$$ 
+
+###Table of Interaction Index of 14 U.S cities
+
+```{r Part 1 - A: Interaction Index , echo=FALSE, message=FALSE, warning=FALSE}
+DT::datatable(city_interaction_metrics, filter = 'top', options = list(pageLength = 14, autoWidth = TRUE), caption = 'Table 1: Interaction Index Exposure Metrics of Segragation for 14 U.S. Cities')
+
+
+city_interaction_metrics[] <- lapply(city_interaction_metrics, type.convert, as.is = TRUE)
+
+
+interaction_loliopop <- ggdotchart(city_interaction_metrics, x = "City", y = "Interaction_Index",
+                                   color = "orange",                             # Color by groups
+                                   sorting = "descending",                       # Sort value in descending order
+                                   add = "segments",                             # Add segments from y = 0 to dots
+                                   rotate = TRUE,                                # Rotate vertically
+                                   dot.size = 11,                                 # Large dot size
+                                   label = city_interaction_metrics$Interaction_Index,                    
+                                   font.label = list(color = "white", size = 11, 
+                                                     vjust = 0.5),               # Adjust label parameters
+                                   ggtheme = theme_pubr()                        # ggplot2 theme
+                                   ) + 
+                                  theme_light() +
+                                  theme(  legend.position="none",
+                                          panel.grid.major.y = element_blank(),
+                                          panel.border = element_blank(),
+                                          axis.ticks.y = element_blank())+
+                                  xlab("") +
+                                  ylab("Interaction Index") + 
+                                  ggtitle("The Interaction Index for 14 U.S Cities", subtitle = "Least Segregated to Most Segragated")
+          
+
+```
+
+###Key Insights from the Table and Lollipop Chart Below:
+
+- **Denver** has the most interaction between it's minority and majority group: 0.69
+
+- **Baltimore** has the least interaction between it's minority and majority group: 0.22
+
+- The top 5 cities with most interaction are: *Denver, Wichita, Oklahoma City, Syracuse, and Pittsburgh* 
+
+- The standard deviation is `r interaction_sd`
+
+```{r Part 1 - A: Interaction Index Chart, fig.width=10, fig.height=10, echo=FALSE}
+interaction_loliopop
+```
+
+## Isolation Index Metrics for each city
+
+
+
+### Formula for calculating the Isolation Index for each city
+
+$$\ Isolation \quad Index = {{\sum\limits_{i=1}^{n}}{\left[{\left( \frac { { x }_{ i } }{ X } \right)}{\left(\frac { { x }_{ i } }{{ t }_{ i }} \right)}\right]}}$$
+$$\ Where $$
+$$\  { x }_{ i } \quad is \quad  the \quad minority \quad population \quad of \quad area \quad i \quad (one \quad tract) $$ 
+$$\  { X} \quad is \quad  the \quad total \quad minority \quad population \quad of \quad the \quad city $$
+ $$\  { t }_{ i } \quad is \quad  the \quad total \quad population \quad of \quad area \quad i \quad (one \quad tract)$$ 
+ 
+
+
+###Table of Isolation Index of 14 U.S cities
+*Note: Isolation Indexes of 1 and 0 indicate minimum and maximum exposure respectively.*
+```{r Part 1 - B: Isolation Index , echo=FALSE, message=FALSE, warning=FALSE}
+DT::datatable(city_isolation_metrics, filter = 'top', options = list(pageLength = 14, autoWidth = TRUE), caption = 'Table 2: Isolation Index Exposure Metrics of Segragation for 14 U.S. Cities')
+
+city_isolation_metrics[] <- lapply(city_isolation_metrics, type.convert, as.is = TRUE)
+
+isolation_loliopop <- ggdotchart(city_isolation_metrics, x = "City", y = "Isolation_Index",
+                                   color = "orange",                             # Color by groups
+                                   sorting = "ascending",                       # Sort value in descending order
+                                   add = "segments",                             # Add segments from y = 0 to dots
+                                   rotate = TRUE,                                # Rotate vertically
+                                   dot.size = 11,                                 # Large dot size
+                                   label = city_isolation_metrics$Isolation_Index,                    
+                                   font.label = list(color = "white", size = 11, 
+                                                     vjust = 0.5),               # Adjust label parameters
+                                   ggtheme = theme_pubr()                        # ggplot2 theme
+                                   ) + 
+                                  theme_light() +
+                                  theme(  legend.position="none",
+                                          panel.grid.major.y = element_blank(),
+                                          panel.border = element_blank(),
+                                          axis.ticks.y = element_blank())+
+                                  xlab("") +
+                                  ylab("Isolation Index") + 
+                                  ggtitle("The Isolation Index for 14 U.S Cities", subtitle = "Least Segregated to Most Segragated")
+
+```
+
+###Key Insights from the Table and Lollipop Chart below:
+
+- **Baltimore** has the most isolation between it's minority and majority group: 0.78
+
+- **Denver** has the least isolation between it's minority and majority group: 0.31
+
+- The top 5 cities with most isolation are: *Baltimore, Chicago, Milwaukee, St Louis and Memphis*
+
+- The standard deviation is `r isolation_sd`
+
+```{r Part 1 - B: Isolation Index Chart, fig.width=10, fig.height=10, echo=FALSE}
+isolation_loliopop
+```
+
+
+## Correlation Ratio for each city
+
+
+
+### Forumula for calculating the Correlation Ratio of each City
+
+$$ Correlation \quad Ratio = \frac { (I-P) }{ (1-P) } ;\quad where \quad I=\sum _{i=1}^{n}{ \left[ \left(\frac{{x}_{i}}{X}\right)\left(\frac{{y}_{i}}{{t}_{i}} \right) \right] } $$
+$$\ Where $$
+$$\  { I } \quad is \quad  the \quad interaction \quad index $$ 
+$$\  { P } \quad is \quad  the \quad ratio \quad of \quad X \quad to \quad T $$ 
+
+###Table of Correlation of 14 U.S cities
+```{r Part 1 - C: Correlation Ratio , echo=FALSE, message=FALSE, warning=FALSE}
+DT::datatable(city_correlation_ratio, filter = 'top', options = list(pageLength = 14, autoWidth = TRUE), caption = 'Table 3: Correlation Ratio Exposure Metrics of Segragation for 14 U.S. Cities')
+
+city_correlation_ratio[] <- lapply(city_correlation_ratio, type.convert, as.is = TRUE)
+
+correlation_loliopop <- ggdotchart(city_correlation_ratio, x = "City", y = "Correlation_Ratio",
+                                   color = "orange",                             # Color by groups
+                                   sorting = "ascending",                       # Sort value in descending order
+                                   add = "segments",                             # Add segments from y = 0 to dots
+                                   rotate = TRUE,                                # Rotate vertically
+                                   dot.size = 11,                                 # Large dot size
+                                   label = city_correlation_ratio$Correlation_Ratio,
+                                   font.label = list(color = "white", size = 11, 
+                                                     vjust = 0.5),               # Adjust label parameters
+                                   ggtheme = theme_pubr()                        # ggplot2 theme
+                                   ) + 
+                                  theme_light() +
+                                  theme(  legend.position="none",
+                                          panel.grid.major.y = element_blank(),
+                                          panel.border = element_blank(),
+                                          axis.ticks.y = element_blank())+
+                                  xlab("") +
+                                  ylab("Correlation Ratio") + 
+                                  ggtitle("The Correlation Ratio for 14 U.S Cities", subtitle = "Least Segregated to Most Segragated")
+
+```
+
+###Key Insights from the Table and Lollipop Chart below:
+
+- **Milwaukee** has the highest correlation ratio (least exposure): 0.45
+
+- **Denver** has the least correlation ratio (most exposure): 0.13
+
+- The top 5 cities with most exposure are: *Denver, Oklahoma City, Wichita, Charleston and Columbus*
+
+- The standard deviation is `r correlation_sd`
+
+
+
+
+
+```{r Part 1 - C: Correlation Chart, fig.width=10, fig.height=10, echo=FALSE}
+correlation_loliopop
+```
+
+## Exposure Metrics Overview Table
+
+Below is an overview table for each of the exposure metrics measured. The table can be searched and each column can be sorted and filtered. 
+
+When we sort the Correlation Ratio in ascending order in the table, we can observe that the Correlation Ratio adjusts for the shortcomings of the isolation and interaction index. While it may not be immedietely obvious when we compare it to the top 5 ranks of the Interaction (only 1 difference), we can notice that there has been a reshuffle for the cities with the least exposure with St.Louis replacing Baltimore as the city with the least exposure.
+
+If you take a look at the bar chart below you will notice that for many cities, even though the dark green bar is high (isolation index), their red bar (correltion ratio), even though they follow the same range pattern i.e 0 is the maximum exposure and 1 is the minimum exposure.
+
+```{r Part 1 - D: Exposure Metrics Overview Table , echo=FALSE, message=FALSE, warning=FALSE}
+DT::datatable(city_exposure_metrics, filter = 'top', options = list(pageLength = 14, autoWidth = TRUE), caption = 'Table 4: Exposure Metrics for Segragation for 14 U.S. Cities')
+
+exposure_bar_chart <- city_exposure_metrics %>% 
+                          plot_ly() %>%
+                          add_trace(x = ~City, y = ~Interaction_Index, type = 'bar', name = 'Interaction Index', 
+                                     text = ~Interaction_Index, textposition = 'auto',
+                                     marker = list(color = '#adccc7',
+                                                   line = list(color = 'rgb(8,48,107)', width = 1.5))) %>%
+                          add_trace(x = ~City, y = ~Isolation_Index, type = 'bar', name = 'Isolation Index', 
+                                    text = ~Isolation_Index, textposition = 'auto',
+                                    marker = list(color = '#144c52',
+                                                  line = list(color = 'rgb(8,48,107)', width = 1.5))) %>%
+                            add_trace(x = ~City, y = ~Correlation_Ratio, type = 'bar', name = 'Correlation Ratio', 
+                                    text = ~Correlation_Ratio, textposition = 'auto',
+                                    marker = list(color = '#fd0054',
+                                                  line = list(color = 'rgb(8,48,107)', width = 1.5))) %>%
+                          layout(title = "Exposure Metrics",
+                                 barmode = 'group',
+                                 xaxis = list(title = ""),
+                                 yaxis = list(title = "Metric Value (b/w 0.0 and 1.0)"))
+```
+
+```{r Part 1 - D: Correlation Chart, fig.width=10, fig.height=10, echo=FALSE}
+exposure_bar_chart
+```
+
+#The Gini Co-efficient
+
+>While, the exposure metrics are great at using diversity to help define segragation of a city, it is important to realize it is equally important to compare the spatial distributions of different groups among units in a metropolitan area. A primitive version to measure this would be using the dissimilarity index in which the segregation is smallest when majority and minority populations are evenly distributed. 
+>**The Gini-Coefficient, is a more advanced version of this, which satisfies the four criteria established by James and Taeuber (1985) for an ideal segregation index.**
+
+## What is the Gini-Coefficient?
+Like the index of dissimilarity, it can be derived from the Lorenz curve, and varies between 0.0 and 1.0, with 1.0 indicating maximum segregation. ***The Gini coefficient is “the mean absolute difference between minority proportions weighted across all pairs of areal units, expressed as a proportion of the maximum weighted mean difference”.***
+
+$$Gini \quad Co-efficient =  \frac { \sum\limits_{i=1}^{n} { \sum\limits_{j=1}^{n} { { t }_{ i }{ t }_{ j }\left| { p }_{ i }-{ p }_{ j } \right| } } }{ 2{ T }^{ 2 }P(1-P) } $$
+
+$$\ Where $$
+$$\  { t }_{ i } \quad is \quad  the \quad total \quad population \quad of \quad area \quad i \quad (one \quad tract)$$ 
+$$\  { t }_{ j } \quad is \quad  the \quad total \quad population \quad of \quad area \quad j \quad (another \quad tract)$$ 
+$$\  { P } \quad is \quad  the \quad ratio of \quad X \quad to \quad T)$$ 
+
+## The Gini Co-efficient values for 14 U.S. Cities
+
+*Note: Gini varies between 0.0 and 1.0, with 1.0 indicating maximum segregation*
+
+```{r Part 2: The Gini Coefficient , echo=FALSE, message=FALSE, warning=FALSE}
+DT::datatable(city_gini, filter = 'top', options = list(pageLength = 14, autoWidth = TRUE), caption = 'Table 4: Exposure Metrics for Segragation for 14 U.S. Cities')
+
+city_gini[] <- lapply(city_gini, type.convert, as.is = TRUE)
+
+gini_loliopop <- ggdotchart(city_gini, x = "City", y = "Gini",
+                                   color = "orange",                             # Color by groups
+                                   sorting = "ascending",                       # Sort value in descending order
+                                   add = "segments",                             # Add segments from y = 0 to dots
+                                   rotate = TRUE,                                # Rotate vertically
+                                   dot.size = 11,                                 # Large dot size
+                                   label = city_gini$Gini,                    
+                                   font.label = list(color = "white", size = 11, 
+                                                     vjust = 0.5),               # Adjust label parameters
+                                   ggtheme = theme_pubr()                        # ggplot2 theme
+                                   ) + 
+                                  theme_light() +
+                                  theme(  legend.position="none",
+                                          panel.grid.major.y = element_blank(),
+                                          panel.border = element_blank(),
+                                          axis.ticks.y = element_blank())+
+                                  xlab("") +
+                                  ylab("Gini Co-efficient") + 
+                                  ggtitle("The Gini Coefficient for 14 U.S Cities", subtitle = "Least Segregated to Most Segragated")
+
+```
+
+###Key Insights from the Table and Lollipop Chart Below:
+
+- **Baltimore** has the most segregation between it's minority and majority group: 0.77
+
+- **Oklahoma City** has the least segregation between it's minority and majority group: 0.44
+
+- The top 5 cities with most segregation are: *Baltimore, Milwaukee, St.Louis, Memphis and Chicago* 
+
+- The standard deviation is `r gini_sd`
+
+```{r Part 2: Gini Chart, fig.width=10, fig.height=10, echo=FALSE}
+gini_loliopop
+```
+
+#The Delta Index
+
+>While the above mentioned indexes are common approaches to measure segregation, they only use the population data of each tract to measure segregation. It becomes more interesting when we consider one more variable - Area of Each Tract. This is where the Delta Index comes in. It uses concentration as a domain to measure segragation of a city.
+
+***Concentration refers to the relative amount of physical space occupied by a minority group in the metropolitan area” (Massey and Denton, p. 289). Minority groups of the same relative size occupying less space would be considered more concentrated and consequently more segregated.***  
+
+## What is it?
+**Delta, is a metric which “computes the proportion of minority members residing in areal units with above average density of minority members”** 
+The index gives the proportion of a group’s population that would have to move across areal units to achieve a uniform density.
+
+## The Delta Index for all cities
+###Formula to calculate Delta Index of one city
+$$ Delta\quad Index = 0.5\sum _{ i=1 }^{ n }{ \left| \left( \frac { { x }_{ i } }{ X } \right)-\left( \frac { { a }_{ i } }{ A } \right) \right| } $$
+
+$$\ Where $$
+$$\  { x }_{ i } \quad is \quad  the \quad minority \quad population \quad of \quad area \quad i \quad (one \quad tract) $$ 
+$$\  { X } \quad is \quad  the \quad total \quad minority \quad population \quad of \quad the \quad city $$
+$$\  { a }_{ i } \quad is \quad  the \quad total \quad area \quad of \quad i \quad (one \quad tract)$$ 
+$$\  { A } \quad is \quad  the \quad total \quad area \quad of \quad the \quad city $$
+
+```{r Part 3: The Delta Index , echo=FALSE, message=FALSE, warning=FALSE}
+DT::datatable(city_delta, filter = 'top', options = list(pageLength = 14, autoWidth = TRUE), caption = 'Table 4: Exposure Metrics for Segragation for 14 U.S. Cities')
+
+city_delta[] <- lapply(city_delta, type.convert, as.is = TRUE)
+
+delta_lolipop <- ggdotchart(city_delta, x = "City", y = "Delta",
+                                   color = "orange",                             # Color by groups
+                                   sorting = "ascending",                       # Sort value in descending order
+                                   add = "segments",                             # Add segments from y = 0 to dots
+                                   rotate = TRUE,                                # Rotate vertically
+                                   dot.size = 11,                                 # Large dot size
+                                   label = city_delta$Delta,                    
+                                   font.label = list(color = "white", size = 11, 
+                                                     vjust = 0.5),               # Adjust label parameters
+                                   ggtheme = theme_pubr()                        # ggplot2 theme
+                                   ) + 
+                                  theme_light() +
+                                  theme(  legend.position="none",
+                                          panel.grid.major.y = element_blank(),
+                                          panel.border = element_blank(),
+                                          axis.ticks.y = element_blank())+
+                                  xlab("") +
+                                  ylab("Delta Index") + 
+                                  ggtitle("The Delta Index for 14 U.S Cities", subtitle = "Concentration Segragation Metrics")
+
+```
+
+###Key Insights from the Table and Chart below:
+
+- **Wichita** has the highest delta index (most concentration): 0.85
+
+- **Baltimore** has the least delta index (least concentration): 0.40
+
+- The top 5 cities with most concentration are: Wichita, Kansas City, Syracuse, St.Louis and Denver
+
+- The standard deviation is `r delta_sd`
+
+```{r Part 3: The Delta Index Chart, fig.width=10, fig.height=10, echo=FALSE}
+delta_lolipop
+```
+
+
+# Comparing and Understanding the Metrics
+
+Now that we have explored three different categories of metrics, it is important to see how they vary and critique the shortcomings of each. 
+
+Below is a table of all the metrics of segregation.
+
+## Table of All Metrics of Segregation
+
+```{r Part 4 A: Understanding the Metrics , echo=FALSE, message=FALSE, warning=FALSE}
+DT::datatable(city_metrics_wo_zo, filter = 'top', options = list(pageLength = 14, autoWidth = TRUE), caption = 'Table 5: Exposure Metrics for Segragation for 14 U.S. Cities')
+```
+
+## Finding Relations Between the Metrics
+
+## Ranking the cities to get a better understanding
+
+While it helps to see the values of each city for each metric, it is more difficult to understand the movement of cities. We shall now make a table of the ranking of each city for each metric. That will make it easier for us to notice movement of each city.
+
+```{r Part 4 B: Understanding the Metrics , echo=FALSE, message=FALSE, warning=FALSE}
+DT::datatable(city_ranks, filter = 'top', options = list(pageLength = 14, autoWidth = TRUE), caption = 'Table 6: Ranking Cities from least segregated to most segregated depending on Index')
+
+
+#Referred to http://www.datavis.ca/sasmac/brewerpal.html for colors
+# https://www.nceas.ucsb.edu/~frazier/RSpatialGuides/colorPaletteCheatsheet.pdf
+
+# Ranking plot
+# using plot qual function from: https://gist.githubusercontent.com/fawda123/5281518/raw/216bb632c728f4df0ec45b53d766e971158a126e/plot_qual.r
+```
+
+## Visually Ranking the Cities 
+
+The table is good at helping us understand the rankings but it is still slightly difficult for us to notice the change in ranking for each city. I made a Google Search on how to visually understand change in ranking and found an article which discussed building line charts. After reading [https://gist.githubusercontent.com/fawda123/5281518/raw/216bb632c728f4df0ec45b53d766e971158a126e/plot_qual.r](this article). I learnt how to import the author's function in and use it for our purpose of understanding the segregation metrics.
+
+> **Below is a line qual chart of it. Note I have only considered Gini, Delta, and Interaction Index here for simplicity. The cities have been ranked in order of least segregated (Rank 1) to most segragated (Rank 2) for each index.**
+
+###Key Insights: 
+
+- **Oklahoma City*, *Charleston*, *Columbus* and *Chicago** begin to drop many ranks down and *Syracuse*, *Memphis* and *St.Louis* begin to climb up many ranks as we progress from Gini to Interaction Index and Delta. This is because the more complex and inclusive the metric becomes of segregation we see a more accurate rank of each city. 
+
+- While the interaction index considers the relative size of the two groups being compared for each tract, Gini does not. It only considers the absolute difference between minority proportions weighted across all pairs of areal units. The Delta Index gives the proportion of a the minority group's population that would  have to move across areal units to achieve a uniform density. While **Oklahoma** may seem to be least segregated if we only compare the spread of the minority proportionsin a city, we notice it is more segregated as begin to consider the population balance of each group in each tract. And when we consider how many people would have to move across each tract to achieve Uniform density, we realize that Oklahoma is extremely segregated. 
+
+- **Baltimore** remains the most segragated city for all three metrics.
+
+- **Chicago** is the only other city which remains in the bottom half of the rankings for each metric. 
+
+
+```{r Part 4: The Ranking Chart, fig.width=10, fig.height=10, echo=FALSE, message=FALSE, warning=FALSE}
+
+par(mar = c(0, 0, 1, 0), family = 'serif')
+
+plot.qual(rank_metrics, ln.cl= brewer.pal(14, "Spectral"), rs.ln = 6, alpha = 0.5, dt.tx = T, main = 'Change in Rank for the Metrics')
+```
+
+
+## My Criticism of the Metrics
+
+My inital reaction to the metrics of segregation were extremely positive. I was extremely impressed by how easily we could use a dataset and get to see how segregated a city is.
+
+However with time, I began to critically think over whether using only these variables can help us identify segregation in cities. The variables available to us do help us measure segregation, however they only give us a perspective on the segregation. This perspective however may not be completely accurate of the city, it's people and it's mechanics. The metrics we used failed to account for: 
+
+- **Commuting within and between the tracts of each city and the commute from the suburbs to the city.** If we could consider the volume and direction of traffic from in and out of the city we could understand the segregation of the city. While we are mapping segregation of minority groups, we fail to acknowledge many may be travelling from out of the city. So a city may seem less segregated due to this as we do not consider suburbs in our analysis.For example, in cities such as Seattle/Denver/New York you have minority groups working menial jobs having to travel into the city from the outskirts for work. It would be nice to consider such a variable. 
+
+- Moreover, I believe it would have helped to think of ***segregation as more than just race being a factor.*** There is a ***wealth, religion and profession factor*** as well which should be brought in and used as a weight when measuring segregation. I come from the city of Mumbai,  a large metropolitan in India. The city experiences vast amounts of segregation based within each tract itself and it is not solely based on race. It depends on cast and the amount of wealth and profession a person does.
+
+With time I began to realize when we are presenting segregation maps **we need to consider the reason of us wanting to learn about a city's segregation and accordingly decide which metric we wish to consider. No metric is perfect and each has it's own purpose.** Below is my analysis of when each metric should be used and where it falls short.
+
+- **Gini:** The weakest of all segregation metrics, the Gini metric is best for understanding the overall distribution of the population. However it fails to account for location and areaof the tract and it's distance from tracts where the majority population exists.
+
+- **Isolation, Interaction Index, Correlation Ratio:** These metrics are most appropriate when you wish to see how each area is segregated and can be used when we wish to understand the overall segregation of tracts in the city. However these measures do not consider the context of a region with respect to another region and do not consider the travel and wealth of each tract. This may lead to us getting a superficial overview of the segregation of the city.
+
+- **Delta Index:** When we use the Gini and Exposure metric to measure segregation, we only consider and compare the population variables of each group in each tract. The Delta Index, introduces the consideration of another variable - Area of each tract. This helps us put the population data in context to the area of each tract and gives us a more accurate understanding of the segregation of cities. This is because earlier we were considering each tract to be of the same size but now we are also considering Area as a weight. However like the previous metrics, the Delta Index does not consider the relation of each tract to the other.
+
+# The Zo-Index: My Own Metric
+The Diversity Index
+
+$$ Zo\quad Index = \sum _{ i=1 }^{ n }{ \left| \left( \frac { { x }_{ i } - {y}_{i} }{ {t}_{i} } \right)\left ( \frac { { a }_{ i } }{ A } \right) \right| } $$
+
+$$\ Where $$
+$$\  { x }_{ i } \quad is \quad  the \quad minority \quad population \quad of \quad area \quad i \quad (one \quad tract) $$ 
+$$\  { y }_{ i } \quad is \quad  the \quad majority \quad population \quad of \quad area \quad i \quad (one \quad tract) $$ 
+$$\  { t }_{ i } \quad is \quad  the \quad total \quad population \quad of \quad area \quad i \quad (one \quad tract) $$ 
+
+$$\  { a }_{ i } \quad is \quad  the \quad total \quad area \quad of \quad i \quad (one \quad tract)$$ 
+$$\  { A } \quad is \quad  the \quad total \quad area \quad of \quad the \quad city $$
+
+The Zo-Index could be considered  as a hybrid of the concentration, exposure and the equalness metrics. It focusses on measuring the *diversity of a city* which would mean that there needs to be an equal number of colored and white people in each tract of the city for it to not be segregated.
+
+The Zo-Index treats minority and majority groups the same and expects the least segregated city to be one where in each tract the absolute difference betweent the majority and minority groups is 0. The Zo-Index also accomodates for area where it understands there is more opportunity for an equal spread between both groups if there is more Area/Space available to the population. Therefore a tract which has more area has a higher weight when measuring segregation.
+
+##Weakness: 
+- Does not consider the relation of one tract to another
+- It does not consider the traffic direction and how much each group travels 
+- Does not consider the wealth of each group
+- Cities such as Syracuse will show as extremely segregated as they are not diverse and have an extremely large population of white people and an extremely low population of not white people.
+
+
+## Table of Zo-Index
+
+**Note: 0 indicates the least amount of segregation**
+
+```{r Part 7 A: Zo-Index , echo=FALSE, message=FALSE, warning=FALSE}
+DT::datatable(city_zo, filter = 'top', options = list(pageLength = 14, autoWidth = TRUE), caption = 'Table 6: Exposure Metrics for Segragation with Zo-Index for 14 U.S. Cities')
+
+
+city_zo[] <- lapply(city_zo, type.convert, as.is = TRUE)
+
+zo_lolipop <- ggdotchart(city_zo, x = "City", y = "Zo",
+                                   color = "orange",                             # Color by groups
+                                   sorting = "ascending",                       # Sort value in descending order
+                                   add = "segments",                             # Add segments from y = 0 to dots
+                                   rotate = TRUE,                                # Rotate vertically
+                                   dot.size = 11,                                 # Large dot size
+                                   label = city_zo$Zo,                    
+                                   font.label = list(color = "white", size = 11, 
+                                                     vjust = 0.5),               # Adjust label parameters
+                                   ggtheme = theme_pubr()                        # ggplot2 theme
+                                   ) + 
+                                  theme_light() +
+                                  theme(  legend.position="none",
+                                          panel.grid.major.y = element_blank(),
+                                          panel.border = element_blank(),
+                                          axis.ticks.y = element_blank())+
+                                  xlab("") +
+                                  ylab("Zo Index") + 
+                                  ggtitle("The Zo Index for 14 U.S Cities", subtitle = "Most Diverse to Least Diverse")
+```
+
+###Key Insights from the Table and Chart below:
+
+- **Charlseton** has the most diversity: 0.41
+
+- **Syracuse** has the least diversity (least concentration): 0.92
+
+- The top 5 cities with most diversity are: Charleston, Chicago, Baltimore, Oklahoma City, and Columbus
+
+- The standard deviation is `r zo_sd`
+
+```{r Part 7-AA: The Zo Index Chart, fig.width=10, fig.height=10, echo=FALSE}
+zo_lolipop
+```
+
+# How Zo-Index stacks up against all the other metrics
+```{r Part 7 B: Zo-Index vs the rest , echo=FALSE, message=FALSE, warning=FALSE}
+DT::datatable(city_metrics, filter = 'top', options = list(pageLength = 14, autoWidth = TRUE), caption = 'Table 6: Exposure Metrics for Segragation with Zo-Index for 14 U.S. Cities')
+```
+
+## Visualizing how Zo stacks up against the other metrics
+
+Initially the immense amount of movement I saw in the ranking chart worried me and I felt that my Index may not be appropriate. However after I critically thought over it, I realized that I am measuring how diverse each city is. After looking at the data of the cities and seeing the visualizations on [http://vallandingham.me/racial_divide/#sy](http://vallandingham.me/racial_divide/#sy), I realized that cities with extremely large populations of white people and low populations of white people will show as most segregated.
+
+###Key Insights: 
+
+- *Charlseton, Chicago, Baltimore, Oklahoma City and Columbus City* are the most diverse cities and climb up several ranks of the tables.
+
+- *Syracuse, St.Louis, Pittsburgh, Kansas City, and Milwaukee* are the least diverse and drop several ranks as they have extremely unequal proportions of white people to not white people.
+
+```{r Part 7 C: The Ranking Chart with Zo, fig.width=10, fig.height=10, echo=FALSE, message=FALSE, warning=FALSE}
+
+par(mar = c(0, 0, 1, 0), family = 'serif')
+
+plot.qual(rank_metrics_with_zo, ln.cl= brewer.pal(14, "Spectral"), rs.ln = 6, alpha = 0.5, dt.tx = T, main = 'Change in Rank for the Metrics')
+```
+
+### Key Insights from Mapping the Indexes against each other
+
+While there will be strong correlations between the correlation ratio, interaction and isolation index, we will ignore these as they all belong to the same family of expsoure metrics.
+
+- There is a strong correlation of 0.797 between Delta and Zo. This may indicate that concentration and diversity metrics are related to each other.
+
+- There is a strong correlation between Gini and the Exposure Metrics. This may indicate that evenness and expsoure metrics are related to each other.
+
+- There is a significant correlation of 0.655 between Delta and the Interaction Index. This may indicate that exposure and concentration metrics are related to each other.
+
+```{r Part 7: Correlations, fig.width=10, fig.height=10, echo=FALSE, message=FALSE, warning=FALSE}
+scatter_data <- city_metrics%>% select(-City)
+ggpairs(scatter_data)
+```
