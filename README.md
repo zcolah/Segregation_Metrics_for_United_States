@@ -9,3 +9,4 @@ Using the population statistics of each tract of 14 U.S. Cities I have completed
 - Proposed Zo-Index, a new segregation metric used to calculate how diverse a city is
 
 ***This was initially an assignment for INFO 370, a class taught by Professor Mike Freeman of the Information School at the University of Washington. I spent time after this assignment to build upon the visualizations I made for this class.***
+

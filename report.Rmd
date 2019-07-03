@@ -3,9 +3,10 @@ title: "Seggration Metrics for U.S Cities"
 author: "Zoshua Colah"
 date: "10/25/2018"
 output:
+  pdf_document: default
   html_document:
-    theme: flatly
     highlight: kate
+    theme: flatly
 ---
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
